@@ -16,10 +16,17 @@
 //#include "filehood.h"
 //#include "common.h"
 
-#define MSG_USAGE "Usage: ./filehood s file_name\n       ./filehood r node_name [directory]\n"
+#define MSG_USAGE "Usage: ./filehood s file_name\n" \
+                  "       ./filehood r node_name [directory]\n"
+#define MSG_LICENSE "Filehood for Linux v0.01a\n" \
+                    "Copyright (c) 2017 Mykhailo Kutsenko\n" \
+                    "Licensed under the MIT License.\n" \
+                    "\n"
 
 int main(int argc, char* argv[])
 {
+    printf(MSG_LICENSE);
+
  /*   if (argc < 3 || argc > 4)
     {
         printf(MSG_USAGE);

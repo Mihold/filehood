@@ -45,8 +45,23 @@ int main(int argc, char* argv[])
             printf(MSG_USAGE);
             return 1;
         }
+        printf("Sending %s\n", argv[2]);
 
-        printf("Sending file %s\n", argv[2]);
+        // open the source file 
+        FILE *inptr = fopen(argv[2], "r");
+        if (inptr == NULL)
+        {
+            printf("ERR Could not open '%s'.\n", argv[2]);
+            return 2;
+        }
+
+        // To do - request a list of peers
+
+        // To do - choose a peer from the list
+
+        // To do - send the file to the peer
+
+        fclose(inptr);
     }
     else
     {

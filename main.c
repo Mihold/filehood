@@ -54,13 +54,23 @@ int main(int argc, char* argv[])
             printf("ERR Could not open '%s'.\n", argv[2]);
             return 2;
         }
-
-        // To do - request a list of peers
-
+        
+        // Requesting a list of peers
+        printf("Looking for peers...\n");
+        
+        // Peer list - limit 20 hosts
+        // <number> <name> <peer ID>
+        
+        // Get the list
+        
+        // Sort the list
+        
+        // Output formated list
+        
         // To do - choose a peer from the list
-
+        
         // To do - send the file to the peer
-
+        
         fclose(inptr);
     }
     else

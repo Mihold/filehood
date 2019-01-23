@@ -23,17 +23,8 @@
 #define FHP_VERSION_FIX 0
 #define FHP_VERSION_BUILD 0
 
-const char sft_file_name[12] = "filehood.info";
+const char sft_file_name[14] = "filehood.info";
 const char sft_magic[4] = {'F', 'H', 'P', 'r'};
-
-typedef struct
-{
-    uint32_t magic;
-    uint32_t version;
-    char reservd[8];   // fill in by 0x00
-    char name[64];
-} __attribute__((__packed__))
-fhp_td_peer_info;
 
 typedef struct
 {
@@ -43,6 +34,22 @@ typedef struct
 } __attribute__((__packed__))
 fhp_td_version;
 
+typedef struct  // Size - 128 bytes (must be less than 512 bites)
+{
+    uint32_t magic;
+    fhp_td_version version;
+    char reserv1[28];   // fill in by 0x00
+    char name[64];
+} __attribute__((__packed__))
+fhp_td_peer_info;
+
+typedef struct
+{
+    uint32_t ip4;
+    //ip6
+    fhp_td_peer_info info;
+}
+fhp_td_peer;
 
 /**
  * Discovery neighbors

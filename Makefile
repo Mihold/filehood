@@ -8,16 +8,16 @@ CFLAGS = -ggdb3 -O0 -Qunused-arguments -std=c11 -Wall -Werror
 EXE = filehood
 
 # space-separated list of header files
-HDRS = filehood.h
-# tftp.h net.h common.h
+HDRS = filehood.h net.h
+# tftp.h common.h
 
 # space-separated list of libraries, if any,
 # each of which should be prefixed with -l
 LIBS =
 
 # space-separated list of source files
-SRCS = main.c filehood.c
-# tftp.c net.c common.c
+SRCS = main.c filehood.c net.c
+# tftp.c common.c
 
 # automatically generated list of object files
 OBJS = $(SRCS:.c=.o)

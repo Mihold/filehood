@@ -14,11 +14,15 @@
 #define FILEHOOD_H
 
 #define TFTP_TIMEOUT 300
+#define FHP_MAX_NODES 20
 
 /**
- * Discovery mode
+ * Discovery neighbors
  *    input: timeout - timeout interval in milliseconds
+ *           peer_limit - max number of peers
+ *           peers[] - pointer on peer list arrey
+ *    return: amount of discovered nodes
  */
-int fhp_discovery(int timeout);
+int fhp_discovery(int timeout, int peer_limit, fhp_td_peer* peers[])
 
 #endif // FILEHOOD_H

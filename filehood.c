@@ -18,12 +18,12 @@
 //#include "tftp.h"
 
 #define FHP_INFO_FILE_LEN 511
-#define FHP_MAX_NODES 20
 #define FHP_VERSION 1
 #define FHP_VERSION_FIX 0
 #define FHP_VERSION_BUILD 0
+#define FHP_INFOFILE "filehood.info"
 
-const char sft_file_name[14] = "filehood.info";
+const char sft_file_name[14] = FHP_INFOFILE;
 const char sft_magic[4] = {'F', 'H', 'P', 'r'};
 
 typedef struct
@@ -34,7 +34,7 @@ typedef struct
 } __attribute__((__packed__))
 fhp_td_version;
 
-typedef struct  // Size - 128 bytes (must be less than 512 bites)
+typedef struct  // Size - 128 bytes (must be less than 512 bytes)
 {
     uint32_t magic;
     fhp_td_version version;
@@ -51,16 +51,24 @@ typedef struct
 }
 fhp_td_peer;
 
-/**
- * Discovery neighbors
- *    input: timeout - timeout interval in milliseconds
- *    return: amount of discovered nodes
- */
-int fhp_discovery(int timeout)
+// Discovery neighbors
+int fhp_discovery(int timeout, int peer_limit, fhp_td_peer* peers[])
 {
-   // tftp_td_files_list *file_list;
+    // Sending multicast RRQ
+    // Prepear a request for gethering peers' info
+
+    // Prepare broadcast IP for the network connection
     
-   // if ((file_list = tftp_get_broadcast_mem((char *) &sft_file_name[0], SFT_MAX_NODES, SFT_INFO_FILE_LEN, timeout)) == NULL)
-   //     return 0;
+    // broadcast RRQ request
+    const struct
+    {
+        uint16_t opcode;
+        char file_name[sizeof FHP_INFOFILE];
+        char mode[6];
+    } tftp_rrq = ( 1, FHP_INFOFILE, "octet");
+    //net_send_udp();
+    
+    // Receive all responces till timeout
+
     return 1;
 }

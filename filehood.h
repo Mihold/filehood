@@ -13,8 +13,35 @@
 #ifndef FILEHOOD_H
 #define FILEHOOD_H
 
-#define TFTP_TIMEOUT 300
+#define FHP_TIMEOUT 300
 #define FHP_MAX_NODES 20
+
+
+typedef struct
+{
+    uint8_t  main;
+    uint8_t  fix;
+    uint16_t build;
+} __attribute__((__packed__))
+fhp_td_version;
+
+typedef struct  // Size - 128 bytes (must be less than 512 bytes)
+{
+    uint32_t magic;
+    fhp_td_version version;
+    char reserv1[28];   // fill in by 0x00
+    char name[64];
+} __attribute__((__packed__))
+fhp_td_peer_info;
+
+typedef struct
+{
+    uint32_t ip4;
+    //ip6
+    fhp_td_peer_info info;
+}
+fhp_td_peer;
+
 
 /**
  * Discovery neighbors
@@ -23,6 +50,6 @@
  *           peers[] - pointer on peer list arrey
  *    return: amount of discovered nodes
  */
-int fhp_discovery(int timeout, int peer_limit, fhp_td_peer* peers[])
+int fhp_discovery(int timeout, int peer_limit, fhp_td_peer* peers[]);
 
 #endif // FILEHOOD_H

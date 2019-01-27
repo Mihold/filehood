@@ -13,8 +13,7 @@
        
 #include <stdio.h>
 
-//#include "filehood.h"
-//#include "common.h"
+#include "filehood.h"
 
 #define MSG_USAGE "Usage: ./filehood s file_name\n" \
                   "       ./filehood r node_name [directory]\n"
@@ -27,6 +26,8 @@
 
 int main(int argc, char* argv[])
 {
+    fhp_td_peer* fh_peer_list[];
+    
     printf(MSG_LICENSE);
 
     if (argc < 3 || argc > 4)
@@ -62,6 +63,8 @@ int main(int argc, char* argv[])
         // <number> <name> <peer ID>
         
         // Get the list
+        //fh_peer_list = malloc()
+        //fhp_discovery(FHP_TIMEOUT, FHP_MAX_NODES,);
         
         // Sort the list
         

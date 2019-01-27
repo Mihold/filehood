@@ -15,58 +15,39 @@
 #include <stdint.h>
 
 #include "filehood.h"
-//#include "tftp.h"
+#include "net.h"
 
 #define FHP_INFO_FILE_LEN 511
 #define FHP_VERSION 1
 #define FHP_VERSION_FIX 0
 #define FHP_VERSION_BUILD 0
 #define FHP_INFOFILE "filehood.info"
+#define FHP_SERVER_PORT 1069
 
 const char sft_file_name[14] = FHP_INFOFILE;
 const char sft_magic[4] = {'F', 'H', 'P', 'r'};
 
-typedef struct
-{
-    uint8_t  main;
-    uint8_t  fix;
-    uint16_t build;
-} __attribute__((__packed__))
-fhp_td_version;
-
-typedef struct  // Size - 128 bytes (must be less than 512 bytes)
-{
-    uint32_t magic;
-    fhp_td_version version;
-    char reserv1[28];   // fill in by 0x00
-    char name[64];
-} __attribute__((__packed__))
-fhp_td_peer_info;
-
-typedef struct
-{
-    uint32_t ip4;
-    //ip6
-    fhp_td_peer_info info;
-}
-fhp_td_peer;
 
 // Discovery neighbors
 int fhp_discovery(int timeout, int peer_limit, fhp_td_peer* peers[])
 {
-    // Sending multicast RRQ
-    // Prepear a request for gethering peers' info
-
-    // Prepare broadcast IP for the network connection
+    int tftp_tid;
     
-    // broadcast RRQ request
     const struct
     {
         uint16_t opcode;
         char file_name[sizeof FHP_INFOFILE];
         char mode[6];
-    } tftp_rrq = ( 1, FHP_INFOFILE, "octet");
-    //net_send_udp();
+    } tftp_rrq = {1, FHP_INFOFILE, "octet"};
+
+    // Sending multicast RRQ
+    // Prepear a request for gethering peers' info
+
+    // Initiate server on random UDP port
+    tftp_tid = net_server_init(0);
+    
+    // broadcast RRQ request
+    net_broadcast(tftp_tid, FHP_SERVER_PORT, (void*) &tftp_rrq, sizeof tftp_rrq);
     
     // Receive all responces till timeout
 

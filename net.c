@@ -23,7 +23,7 @@
 #include <errno.h>
 #include <arpa/inet.h>
 
-#include "common.h"
+//#include "common.h"
 #include "net.h"
 
 #define LISTEN_BACKLOG 3
@@ -50,8 +50,7 @@ int net_server_init(int port)
     {
         if (bind(sfd, (struct sockaddr *) &server_addr, server_addr_size) == -1)
         {
-            snprintf(sft_err_msg, SFT_ERR_MSG_LEN, "INF {net} bind error %s", strerror(errno));
-            sft_log(sft_err_msg);
+            printf("INF {net} bind error %s\n", strerror(errno));
             
             close(sfd);
             sfd = -1;
@@ -75,8 +74,7 @@ int net_server_get(int sfd, void *buf, int buf_size, net_tp_peer_addr *peer)
     res = recvfrom(sfd, buf, buf_size, 0, (struct sockaddr *) &peer_addr, &peer_addr_len);
     if (res == -1)
     {
-        snprintf(sft_err_msg, SFT_ERR_MSG_LEN, "INF {net} recvfrom error %s", strerror(errno));
-        sft_log(sft_err_msg);
+        printf("INF {net} recvfrom error %s\n", strerror(errno));
     }
     
     peer->peer_addr = peer_addr.sin_addr.s_addr;
@@ -109,8 +107,7 @@ void net_broadcast(int sfd, int dst_port, void *packet, int packet_len)
         int broadcastEnable=1;
         if (setsockopt(sfd, SOL_SOCKET, SO_BROADCAST, &broadcastEnable, sizeof(broadcastEnable)) == -1)
         {
-            snprintf(sft_err_msg, SFT_ERR_MSG_LEN, "INF {net} Cannot enable broadcast on the socket. error - %s", strerror(errno));
-            sft_log(sft_err_msg);
+            printf("INF {net} Cannot enable broadcast on the socket. error - %s\n", strerror(errno));
         }
         for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next)
         {
@@ -119,16 +116,14 @@ void net_broadcast(int sfd, int dst_port, void *packet, int packet_len)
             {
                 peer_addr.sin_addr.s_addr = ((struct sockaddr_in *) ifa->ifa_addr)->sin_addr.s_addr;
                 peer_addr.sin_addr.s_addr |= ~((struct sockaddr_in *) ifa->ifa_netmask)->sin_addr.s_addr;
-                snprintf(sft_err_msg, SFT_ERR_MSG_LEN, "INF {net} Can broadcast on %s is %s", ifa->ifa_name, inet_ntoa(peer_addr.sin_addr));
-                sft_log(sft_err_msg);
+                printf("INF {net} Can broadcast on %s is %s\n", ifa->ifa_name, inet_ntoa(peer_addr.sin_addr));
                 
                 // send the packet
-                sft_log("INF {net} broadcast the packet.");
+                printf("INF {net} broadcast the packet.\n");
                 res = sendto(sfd, packet, packet_len, 0, (struct sockaddr *) &peer_addr, peer_addr_len);
                 if (res == -1)
                 {
-                    snprintf(sft_err_msg, SFT_ERR_MSG_LEN, "INF {net} sendto error %s", strerror(errno));
-                    sft_log(sft_err_msg);
+                    printf("INF {net} sendto error %s\n", strerror(errno));
                 }
             }
         }

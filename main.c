@@ -12,6 +12,7 @@
  */
        
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "filehood.h"
 
@@ -26,7 +27,8 @@
 
 int main(int argc, char* argv[])
 {
-    fhp_td_peer* fh_peer_list[];
+    fhp_td_peer* fh_peer_list;
+    int fh_peer_num;
     
     printf(MSG_LICENSE);
 
@@ -52,7 +54,7 @@ int main(int argc, char* argv[])
         FILE *inptr = fopen(argv[2], "r");
         if (inptr == NULL)
         {
-            printf("ERR Could not open '%s'.\n", argv[2]);
+            fprintf(stderr, "ERR Could not open '%s'.\n", argv[2]);
             return 2;
         }
         
@@ -63,13 +65,23 @@ int main(int argc, char* argv[])
         // <number> <name> <peer ID>
         
         // Get the list
-        //fh_peer_list = malloc()
-        //fhp_discovery(FHP_TIMEOUT, FHP_MAX_NODES,);
-        
-        // Sort the list
-        
-        // Output formated list
-        
+        fh_peer_list = malloc(FHP_MAX_NODES * sizeof(fhp_td_peer));
+        if (fh_peer_list == NULL)
+        {
+            fprintf(stderr, "ERR Out of memory.\n");
+            return 2;
+        }
+        fh_peer_num = fhp_discovery(FHP_DISCOVERY_INT, FHP_MAX_NODES, fh_peer_list);
+        if (fh_peer_num > 0)
+        {
+            // Sort the list
+            
+            // Output formated list
+        }
+        else
+        {
+            printf("Didn't find any peers on the network.\n");
+        }
         // To do - choose a peer from the list
         
         // To do - send the file to the peer

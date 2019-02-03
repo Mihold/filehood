@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include <netdb.h>
 #include <string.h>
+#include <sys/select.h>
 
 // teporaryly
 #include <stdio.h>
@@ -50,7 +51,7 @@ int net_server_init(int port)
     {
         if (bind(sfd, (struct sockaddr *) &server_addr, server_addr_size) == -1)
         {
-            printf("INF {net} bind error %s\n", strerror(errno));
+            fprintf(stderr, "ERR {net} bind error %s\n", strerror(errno));
             
             close(sfd);
             sfd = -1;
@@ -65,23 +66,70 @@ int net_server_init(int port)
  * Get incomeing message
  *    input: socket idetifer
  */
-int net_server_get(int sfd, void *buf, int buf_size, net_tp_peer_addr *peer)
+int net_server_get_packet(int sfd, void *buf, int buf_size, net_tp_peer_addr *peer)
 {
     struct sockaddr_in peer_addr;
     socklen_t peer_addr_len = sizeof(peer_addr);
     int res;
+    struct timeval tv = {.tv_sec = 0, .tv_usec = 0};
+    fd_set rfds;
     
-    res = recvfrom(sfd, buf, buf_size, 0, (struct sockaddr *) &peer_addr, &peer_addr_len);
+    FD_ZERO(&rfds);
+    FD_SET(sfd, &rfds);
+    
+    res = select(sfd + 1, &rfds, NULL, NULL, &tv);
     if (res == -1)
     {
-        printf("INF {net} recvfrom error %s\n", strerror(errno));
+        fprintf(stderr, "ERR {net} select error %s\n", strerror(errno));
+        res = 0;
     }
-    
-    peer->peer_addr = peer_addr.sin_addr.s_addr;
-    peer->peer_port = peer_addr.sin_port;
+    else if (res != 0)
+    {
+        res = recvfrom(sfd, buf, buf_size, 0, (struct sockaddr *) &peer_addr, &peer_addr_len);
+        if (res == -1)
+        {
+            fprintf(stderr, "ERR {net} recvfrom error %s\n", strerror(errno));
+            res = 0;
+        }
+        else if (res < 4 || res > 516)
+        {
+            fprintf(stderr, "ERR {net} unknown datagram\n");
+            res = 0;
+        }
+        else
+        {
+            peer->peer_addr = peer_addr.sin_addr.s_addr;
+            peer->peer_port = ntohs(peer_addr.sin_port);
+        }
+    }
 
     return res;
 }
+
+
+/**
+ * Send a message
+ *    input: socket idetifer
+ */
+void net_server_send_packet(int sfd, void *buf, int buf_size, net_tp_peer_addr *peer)
+{
+    struct sockaddr_in peer_addr;
+    socklen_t peer_addr_len = sizeof(struct sockaddr_in);
+    int res;
+    
+    memset(&peer_addr, 0, peer_addr_len);
+    peer_addr.sin_family = AF_INET;
+    peer_addr.sin_port = htons(peer->peer_port);
+    peer_addr.sin_addr.s_addr = peer->peer_addr;
+    
+    // send the packet
+    res = sendto(sfd, buf, buf_size, 0, (struct sockaddr *) &peer_addr, peer_addr_len);
+    if (res == -1)
+    {
+        fprintf(stderr, "INF {net} sendto error %s\n", strerror(errno));
+    }
+}
+
 
 
 /**
@@ -107,7 +155,7 @@ void net_broadcast(int sfd, int dst_port, void *packet, int packet_len)
         int broadcastEnable=1;
         if (setsockopt(sfd, SOL_SOCKET, SO_BROADCAST, &broadcastEnable, sizeof(broadcastEnable)) == -1)
         {
-            printf("INF {net} Cannot enable broadcast on the socket. error - %s\n", strerror(errno));
+            fprintf(stderr, "INF {net} Cannot enable broadcast on the socket. error - %s\n", strerror(errno));
         }
         for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next)
         {
@@ -116,14 +164,14 @@ void net_broadcast(int sfd, int dst_port, void *packet, int packet_len)
             {
                 peer_addr.sin_addr.s_addr = ((struct sockaddr_in *) ifa->ifa_addr)->sin_addr.s_addr;
                 peer_addr.sin_addr.s_addr |= ~((struct sockaddr_in *) ifa->ifa_netmask)->sin_addr.s_addr;
-                printf("INF {net} Can broadcast on %s is %s\n", ifa->ifa_name, inet_ntoa(peer_addr.sin_addr));
+                printf("INF {net} Can broadcast on %s [%s]\n", ifa->ifa_name, inet_ntoa(peer_addr.sin_addr));
                 
                 // send the packet
                 printf("INF {net} broadcast the packet.\n");
                 res = sendto(sfd, packet, packet_len, 0, (struct sockaddr *) &peer_addr, peer_addr_len);
                 if (res == -1)
                 {
-                    printf("INF {net} sendto error %s\n", strerror(errno));
+                    fprintf(stderr, "INF {net} sendto error %s\n", strerror(errno));
                 }
             }
         }
@@ -131,6 +179,24 @@ void net_broadcast(int sfd, int dst_port, void *packet, int packet_len)
     freeifaddrs(ifaddr);
 }
 
+
+/**
+ * convert bite order from net to host
+ *    input: short int in net format
+ */
+uint16_t net_decode(uint16_t i)
+{
+    return ntohs(i);
+}
+
+/**
+ * convert bite order from host to net
+ *    input: short int in host format
+ */
+uint16_t net_encode(uint16_t i)
+{
+    return htons(i);
+}
 
 /**
  * close connection

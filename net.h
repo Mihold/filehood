@@ -21,8 +21,11 @@ typedef struct
 net_tp_peer_addr;
 
 int net_server_init(int port);
-int net_server_get(int sfd, void *buf, int buf_size, net_tp_peer_addr *peer);
+int net_server_get_packet(int sfd, void *buf, int buf_size, net_tp_peer_addr *peer);
+void net_server_send_packet(int sfd, void *buf, int buf_size, net_tp_peer_addr *peer);
 void net_broadcast(int sfd, int dst_port, void *packet, int packet_len);
+uint16_t net_encode(uint16_t i);
+uint16_t net_decode(uint16_t i);
 int net_close(int sfd);
 
 #endif // NET_H

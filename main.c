@@ -28,7 +28,8 @@
 int main(int argc, char* argv[])
 {
     fhp_td_peer* fh_peer_list;
-    int fh_peer_num;
+    int fh_peer_num, i;
+    int fh_peer = 0;
     
     printf(MSG_LICENSE);
 
@@ -48,7 +49,6 @@ int main(int argc, char* argv[])
             printf(MSG_USAGE);
             return 1;
         }
-        printf("Sending %s\n", argv[2]);
 
         // open the source file 
         FILE *inptr = fopen(argv[2], "r");
@@ -71,20 +71,35 @@ int main(int argc, char* argv[])
             fprintf(stderr, "ERR Out of memory.\n");
             return 2;
         }
-        fh_peer_num = fhp_discovery(FHP_DISCOVERY_INT, FHP_MAX_NODES, fh_peer_list);
-        if (fh_peer_num > 0)
+        while (!fh_peer)
         {
-            // Sort the list
-            
-            // Output formated list
+            fh_peer_num = fhp_discovery(FHP_DISCOVERY_INT, FHP_MAX_NODES, fh_peer_list);
+            if (fh_peer_num > 0)
+            {
+                // Sort the list
+                
+                // Output formated list
+                printf("Peers:\n");
+                for (i=1; i<=fh_peer_num; i++)
+                {
+                    printf("%2i %.30s\n", i, fh_peer_list[i-1].info->name);
+                }
+                printf("Enter a number from the list to send the file or 0 to rescan the network: ");
+            }
+            else
+            {
+                printf("Didn't find any peers on the network.\n");
+            }
+            // Choose a peer from the list
+            while (!scanf("%d", &fh_peer) || (fh_peer < 0) || (fh_peer > (fh_peer_num + 1)))
+            {
+                while (fgetc(stdin) != '\n');
+            }
         }
-        else
-        {
-            printf("Didn't find any peers on the network.\n");
-        }
-        // To do - choose a peer from the list
+        fh_peer--;
         
-        // To do - send the file to the peer
+        // ToDo - send the file to the peer
+        printf("Sending the file to %s\n", fh_peer_list[fh_peer].info->name);
         
         fclose(inptr);
     }

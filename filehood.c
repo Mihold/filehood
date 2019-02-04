@@ -99,7 +99,7 @@ int fhp_discovery(int timeout, int peer_limit, fhp_td_peer* peers)
                     (peer_info->tftp_block == 1) &&
                     (*((uint32_t*)&(peer_info->magic)) == *((uint32_t*) &sft_magic)))
                 {
-                    // Send ACK for confirmation
+                    // Send ACK1 to end the TFTP session
                     net_server_send_packet(tftp_tid, (void*) &tftp_ack1, sizeof(tftp_ack1), &(peers[peer_num].ip4));
 
                     // TODO Check for a duplicate

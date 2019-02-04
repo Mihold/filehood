@@ -126,7 +126,7 @@ void net_server_send_packet(int sfd, void *buf, int buf_size, net_tp_peer_addr *
     res = sendto(sfd, buf, buf_size, 0, (struct sockaddr *) &peer_addr, peer_addr_len);
     if (res == -1)
     {
-        fprintf(stderr, "INF {net} sendto error %s\n", strerror(errno));
+        fprintf(stderr, "ERR {net} sendto error %s\n", strerror(errno));
     }
 }
 
@@ -155,7 +155,7 @@ void net_broadcast(int sfd, int dst_port, void *packet, int packet_len)
         int broadcastEnable=1;
         if (setsockopt(sfd, SOL_SOCKET, SO_BROADCAST, &broadcastEnable, sizeof(broadcastEnable)) == -1)
         {
-            fprintf(stderr, "INF {net} Cannot enable broadcast on the socket. error - %s\n", strerror(errno));
+            fprintf(stderr, "ERR {net} Cannot enable broadcast on the socket. error - %s\n", strerror(errno));
         }
         for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next)
         {
@@ -164,14 +164,14 @@ void net_broadcast(int sfd, int dst_port, void *packet, int packet_len)
             {
                 peer_addr.sin_addr.s_addr = ((struct sockaddr_in *) ifa->ifa_addr)->sin_addr.s_addr;
                 peer_addr.sin_addr.s_addr |= ~((struct sockaddr_in *) ifa->ifa_netmask)->sin_addr.s_addr;
-                printf("INF {net} Can broadcast on %s [%s]\n", ifa->ifa_name, inet_ntoa(peer_addr.sin_addr));
+                //printf(stderr, "INF {net} Can broadcast on %s [%s]\n", ifa->ifa_name, inet_ntoa(peer_addr.sin_addr));
                 
                 // send the packet
-                printf("INF {net} broadcast the packet.\n");
+                //printf(stderr, "INF {net} broadcast the packet.\n");
                 res = sendto(sfd, packet, packet_len, 0, (struct sockaddr *) &peer_addr, peer_addr_len);
                 if (res == -1)
                 {
-                    fprintf(stderr, "INF {net} sendto error %s\n", strerror(errno));
+                    fprintf(stderr, "ERR {net} sendto error %s\n", strerror(errno));
                 }
             }
         }

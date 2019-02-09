@@ -14,7 +14,7 @@
 #define FILEHOOD_H
 
 #define FHP_TIMEOUT 300
-#define FHP_DISCOVERY_INT 3		// 3 seconds
+#define FHP_DISCOVERY_INT 3		// Discovery interval is 3 seconds
 #define FHP_MAX_NODES 20
 #define FHP_INFO_FILE_LEN 511 	// Max size of an info file
 

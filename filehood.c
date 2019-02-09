@@ -52,11 +52,13 @@ const char sft_magic[4] = {'F', 'H', 'P', 'r'};
 // Discovery neighbors
 int fhp_discovery(int timeout, int peer_limit, fhp_td_peer* peers)
 {
-    int tftp_tid, tftp_res;
+    int tftp_tid, tftp_res, i;
     time_t timer;
     int peer_num = 0;
     fhp_td_peer_info *peer_info;
+    net_tp_peer_addr peer_ip;
     
+    // Prepear a request for gethering peers info
     const struct
     {
         uint16_t opcode;
@@ -66,8 +68,6 @@ int fhp_discovery(int timeout, int peer_limit, fhp_td_peer* peers)
 
     const struct tftp_ack tftp_ack1 = {0x0400, 0x0100};
 
-    // Sending multicast RRQ
-    // Prepear a request for gethering peers info
 
     // Initialize TFTP client on random UDP port
     tftp_tid = net_server_init(0);
@@ -88,10 +88,10 @@ int fhp_discovery(int timeout, int peer_limit, fhp_td_peer* peers)
     while ((time(NULL) < timer) && (peer_num < peer_limit))
     {
         // Get a DAT1 paccket and it has to be the last packet
-        tftp_res = net_server_get_packet(tftp_tid, peer_info, sizeof(fhp_td_peer_info), &(peers[peer_num].ip4));
+        tftp_res = net_server_get_packet(tftp_tid, peer_info, sizeof(fhp_td_peer_info), &peer_ip);
         if (tftp_res)
         {
-            if (tftp_res < sizeof(fhp_td_peer_info))
+            if (tftp_res <= sizeof(fhp_td_peer_info))
             {
                 peer_info->tftp_opcode = net_decode(peer_info->tftp_opcode);
                 peer_info->tftp_block = net_decode(peer_info->tftp_block);
@@ -99,16 +99,25 @@ int fhp_discovery(int timeout, int peer_limit, fhp_td_peer* peers)
                     (peer_info->tftp_block == 1) &&
                     (*((uint32_t*)&(peer_info->magic)) == *((uint32_t*) &sft_magic)))
                 {
-                    // Send ACK1 to end the TFTP session
-                    net_server_send_packet(tftp_tid, (void*) &tftp_ack1, sizeof(tftp_ack1), &(peers[peer_num].ip4));
+                    // Send ACK1 to compleat the TFTP session
+                    net_server_send_packet(tftp_tid, (void*) &tftp_ack1, sizeof(tftp_ack1), &peer_ip);
 
-                    // TODO Check for a duplicate
-                    //
+                    // Check for duplicates
+                    for (i=0; i<peer_num; i++)
+                    {
+                        if (peer_ip.peer_addr == peers[i].ip4.peer_addr)
+                            break;
+                    }
 
-                    peer_info->name[63] = 0;
-                    peers[peer_num].info = peer_info;
-                    peer_info = calloc(1, sizeof(fhp_td_peer_info));
-                    peer_num++;
+                    if (i == peer_num)
+                    {
+                        // Add a new peer
+                        peers[peer_num].ip4 = peer_ip;
+                        peer_info->name[63] = 0;
+                        peers[peer_num].info = peer_info;
+                        peer_info = calloc(1, sizeof(fhp_td_peer_info));
+                        peer_num++;
+                    }
                 }
                 else
                 {

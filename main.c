@@ -27,7 +27,7 @@
 
 int main(int argc, char* argv[])
 {
-    fhp_td_peer* fh_peer_list;
+    fhp_td_peer* fh_peer_list, fh_peer_selested;
     int fh_peer_num, i;
     int fh_peer = 0;
     
@@ -65,7 +65,7 @@ int main(int argc, char* argv[])
         // <number> <name> <peer ID>
         
         // Get the list
-        fh_peer_list = malloc(FHP_MAX_NODES * sizeof(fhp_td_peer));
+        fh_peer_list = calloc(FHP_MAX_NODES, sizeof(fhp_td_peer));
         if (fh_peer_list == NULL)
         {
             fprintf(stderr, "ERR Out of memory.\n");
@@ -97,11 +97,24 @@ int main(int argc, char* argv[])
             }
         }
         fh_peer--;
+        fh_peer_selested = fh_peer_list[fh_peer];
+
+        // Free up memory
+        for (i=0; i<fh_peer_num; i++)
+        {
+            if (i != fh_peer)
+            {
+                free(fh_peer_list[i].info);
+                fh_peer_list[i].info = NULL;
+            }
+        }
         
         // ToDo - send the file to the peer
         printf("Sending the file to %s\n", fh_peer_list[fh_peer].info->name);
         
         fclose(inptr);
+        free(fh_peer_selested.info);
+        free(fh_peer_list);
     }
     else
     {

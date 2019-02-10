@@ -45,8 +45,9 @@ struct tftp_ack
     uint16_t tftp_blockNum;
 } __attribute__((__packed__));
 
-const char sft_file_name[14] = FHP_INFOFILE;
-const char sft_magic[4] = {'F', 'H', 'P', 'r'};
+const char fhp_file_name[sizeof(FHP_INFOFILE)] = FHP_INFOFILE;
+const char fhp_magic[4] = {'F', 'H', 'P', 'r'};
+const char fhp_tftp_mode[sizeof(TFTP_MODE)] = TFTP_MODE;
 
 
 // Discovery neighbors
@@ -62,7 +63,7 @@ int fhp_discovery(int timeout, int peer_limit, fhp_td_peer* peers)
     const struct
     {
         uint16_t opcode;
-        char file_name[sizeof FHP_INFOFILE];
+        char file_name[sizeof(FHP_INFOFILE)];
         char mode[6];
     } tftp_rrq = {TFTP_OPCODE_RRQ, FHP_INFOFILE, TFTP_MODE};
 
@@ -85,6 +86,11 @@ int fhp_discovery(int timeout, int peer_limit, fhp_td_peer* peers)
     }
     timer += (time_t) timeout;
     peer_info = calloc(1, sizeof(fhp_td_peer_info));
+    if (peer_info == NULL)
+    {
+        fprintf(stderr, "ERR {filehood} Out of memory.\n");
+        exit(2);
+    }
     while ((time(NULL) < timer) && (peer_num < peer_limit))
     {
         // Get a DAT1 paccket and it has to be the last packet
@@ -97,7 +103,7 @@ int fhp_discovery(int timeout, int peer_limit, fhp_td_peer* peers)
                 peer_info->tftp_block = net_decode(peer_info->tftp_block);
                 if ((peer_info->tftp_opcode == TFTP_OPCODE_DAT) &&
                     (peer_info->tftp_block == 1) &&
-                    (*((uint32_t*)&(peer_info->magic)) == *((uint32_t*) &sft_magic)))
+                    (*((uint32_t*)&(peer_info->magic)) == *((uint32_t*) &fhp_magic)))
                 {
                     // Send ACK1 to compleat the TFTP session
                     net_server_send_packet(tftp_tid, (void*) &tftp_ack1, sizeof(tftp_ack1), &peer_ip);
@@ -116,6 +122,11 @@ int fhp_discovery(int timeout, int peer_limit, fhp_td_peer* peers)
                         peer_info->name[63] = 0;
                         peers[peer_num].info = peer_info;
                         peer_info = calloc(1, sizeof(fhp_td_peer_info));
+                        if (peer_info == NULL)
+                        {
+                            fprintf(stderr, "ERR {filehood} Out of memory.\n");
+                            exit(2);
+                        }
                         peer_num++;
                     }
                 }
@@ -143,4 +154,178 @@ int fhp_discovery(int timeout, int peer_limit, fhp_td_peer* peers)
 
     net_close(tftp_tid);
     return peer_num;
+}
+
+
+// Send a file to a peer
+void fhp_send(FILE* inptr, fhp_td_peer* peer, char* filename)
+{
+    int tftp_tid, i, j, block_size, tftp_wrq_size;
+    int filename_len, fhp_tftp_ack_block;
+    char* tftp_buffer;
+    long sz, fhp_sent;
+    net_tp_peer_addr fhp_peer_ip, fhp_tftp_asc_ip;
+    time_t timer;
+    /*fhp_td_peer_info *peer_info;
+    net_tp_peer_addr peer_ip;
+    
+    // Prepear a request for gethering peers info
+    struct
+    {
+        uint16_t opcode;
+        char file_name[sizeof FHP_INFOFILE];
+        char mode[6];
+    } tftp_wrq = {TFTP_OPCODE_WRQ, FHP_INFOFILE, TFTP_MODE};
+*/
+    struct tftp_ack* fhp_tftp_ack;
+
+
+    // Get the file size
+    fseek(inptr, 0L, SEEK_END);
+    sz = ftell(inptr);
+    if (sz == 0)
+    {
+        fprintf(stderr, "ERR {filehood} The file is empty.\n");
+        return;
+    }
+    rewind(inptr);
+    
+    // Initialize TFTP client on random UDP port
+    tftp_tid = net_server_init(0);
+    fhp_peer_ip = peer->ip4;
+
+    // Send WRQ
+    tftp_buffer = malloc(516);      // 2(opcode)+2(block)+512(data)
+    fhp_tftp_ack = calloc(1, 516);  // 2(opcode)+2(errcode)+512(errmes)
+    if ((fhp_tftp_ack == NULL) || (tftp_buffer == NULL))
+    {
+        fprintf(stderr, "ERR {filehood} Out of memory.\n");
+        exit(2);
+    }
+    filename_len = strlen(filename) + 1;
+    tftp_wrq_size = 2 + sizeof(TFTP_MODE) + filename_len;
+    if (tftp_wrq_size > 514)
+    {
+        fprintf(stderr, "ERR {filehood} The filename is too long.\n");
+        exit(2);
+    }
+    *((uint16_t*) tftp_buffer) = net_encode(TFTP_OPCODE_WRQ);
+    strcpy(tftp_buffer + 2, filename);
+    strcpy(tftp_buffer + 2 + filename_len, &fhp_tftp_mode[0]);
+    fhp_peer_ip.peer_port = FHP_SERVER_PORT;
+    net_server_send_packet(tftp_tid, (void*) tftp_buffer, tftp_wrq_size, &fhp_peer_ip);
+    timer = time(NULL);     // init the timer
+    if (timer == -1)
+    {
+        fprintf(stderr, "ERR {filehood} Cannot initialize the timer.\n");
+        return;
+    }
+    timer += (time_t) FHP_TIMEOUT;
+    while ((time(NULL) < timer) && (fhp_peer_ip.peer_port == FHP_SERVER_PORT))
+    {
+        if (net_server_get_packet(tftp_tid, fhp_tftp_ack, 516, &fhp_tftp_asc_ip) == 4)
+        {
+            // The packet has to be ACK0 from the peer
+            if ((fhp_tftp_asc_ip.peer_addr == fhp_peer_ip.peer_addr) &&
+                (net_decode(fhp_tftp_ack->tftp_opcode) == TFTP_OPCODE_ACK) &&
+                (net_decode(fhp_tftp_ack->tftp_blockNum) == 0))
+            {
+                fhp_peer_ip.peer_port = fhp_tftp_asc_ip.peer_port;
+            }
+        }
+    }
+
+    fhp_tftp_ack_block = 0;
+    if (fhp_peer_ip.peer_port != FHP_SERVER_PORT)
+    {
+        // Send the file to the peer
+        fhp_sent = 0;
+        *((uint16_t*) tftp_buffer) = net_encode(TFTP_OPCODE_DAT);
+        i = 1;
+        while (((block_size = fread((void*) (tftp_buffer + 4), 1, 512, inptr)) == 512) && (fhp_tftp_ack_block != i))
+        {
+            *((uint16_t*) (tftp_buffer + 2)) = net_encode((uint16_t) i);
+            j = 4;      // 4 attempt to send the block
+            while ((j != 0) && (fhp_tftp_ack_block != i))
+            {
+                net_server_send_packet(tftp_tid, (void*) tftp_buffer, 516, &fhp_peer_ip);
+                // Wait for ACK
+                timer = time(NULL);     // init the timer
+                if (timer == -1)
+                {
+                    fprintf(stderr, "ERR {filehood} Cannot initialize the timer.\n");
+                    return;
+                }
+                timer += (time_t) 3;        // Timeout
+                
+                // Waiting for ACK
+                while ((time(NULL) < timer) && (fhp_tftp_ack_block != i))
+                {
+                    if (net_server_get_packet(tftp_tid, fhp_tftp_ack, 516, &fhp_tftp_asc_ip) == 4)
+                    {
+                        // The packet has to be ACK from the peer
+                        if ((fhp_tftp_asc_ip.peer_addr == fhp_peer_ip.peer_addr) &&
+                            (fhp_tftp_asc_ip.peer_port == fhp_peer_ip.peer_port) &&
+                            (net_decode(fhp_tftp_ack->tftp_opcode) == TFTP_OPCODE_ACK) &&
+                            (net_decode(fhp_tftp_ack->tftp_blockNum) == i))
+                        {
+                            fhp_tftp_ack_block = i;
+                        }
+                    }
+                }
+                if (fhp_tftp_ack_block != i)
+                    fprintf(stderr, "INF {filehood} TFTP: Resend DAT%i.\n", i);
+                j--;
+            }
+            if (fhp_tftp_ack_block != i)
+                fprintf(stderr, "ERR {filehood} TFTP timeout.\n");
+            else
+                i++;
+        }
+
+        // Send the last block
+        if (fhp_tftp_ack_block != i)
+        {
+            *((uint16_t*) (tftp_buffer + 2)) = net_encode((uint16_t) i);
+            j = 4;      // 4 attempt to send the block
+            while ((j != 0) && (fhp_tftp_ack_block != i))
+            {
+                net_server_send_packet(tftp_tid, (void*) tftp_buffer, block_size + 4, &fhp_peer_ip);
+                // Wait for ACK
+                timer = time(NULL);     // init the timer
+                if (timer == -1)
+                {
+                    fprintf(stderr, "ERR {filehood} Cannot initialize the timer.\n");
+                    return;
+                }
+                timer += (time_t) 3;        // Timeout
+                
+                // Waiting for ACK
+                while ((time(NULL) < timer) && (fhp_tftp_ack_block != i))
+                {
+                    if (net_server_get_packet(tftp_tid, fhp_tftp_ack, 516, &fhp_tftp_asc_ip) == 4)
+                    {
+                        // The packet has to be ACK from the peer
+                        if ((fhp_tftp_asc_ip.peer_addr == fhp_peer_ip.peer_addr) &&
+                            (fhp_tftp_asc_ip.peer_port == fhp_peer_ip.peer_port) &&
+                            (net_decode(fhp_tftp_ack->tftp_opcode) == TFTP_OPCODE_ACK) &&
+                            (net_decode(fhp_tftp_ack->tftp_blockNum) == i))
+                        {
+                            fhp_tftp_ack_block = i;
+                        }
+                    }
+                }
+                if (fhp_tftp_ack_block != i)
+                    fprintf(stderr, "INF {filehood} TFTP: Resend DAT%i.\n", i);
+                j--;
+                j--;
+            }
+            if (fhp_tftp_ack_block != i)
+                fprintf(stderr, "ERR {filehood} TFTP timeout.\n");
+        }
+    }
+    
+    free(tftp_buffer);
+    free(fhp_tftp_ack);
+    net_close(tftp_tid);
 }

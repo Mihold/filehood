@@ -13,6 +13,7 @@
        
 #include <stdio.h>
 #include <stdlib.h>
+#include <libgen.h>
 
 #include "filehood.h"
 
@@ -27,9 +28,10 @@
 
 int main(int argc, char* argv[])
 {
-    fhp_td_peer* fh_peer_list, fh_peer_selested;
+    fhp_td_peer *fh_peer_list, *fh_peer_selested;
     int fh_peer_num, i;
     int fh_peer = 0;
+    char* filename;
     
     printf(MSG_LICENSE);
 
@@ -57,6 +59,7 @@ int main(int argc, char* argv[])
             fprintf(stderr, "ERR Could not open '%s'.\n", argv[2]);
             return 2;
         }
+        filename = basename(argv[2]);
         
         // Requesting a list of peers
         printf("Looking for peers...\n");
@@ -91,13 +94,13 @@ int main(int argc, char* argv[])
                 printf("Didn't find any peers on the network.\n");
             }
             // Choose a peer from the list
-            while (!scanf("%d", &fh_peer) || (fh_peer < 0) || (fh_peer > (fh_peer_num + 1)))
+            while (!scanf("%d", &fh_peer) || (fh_peer < 0) || (fh_peer > fh_peer_num))
             {
                 while (fgetc(stdin) != '\n');
             }
         }
         fh_peer--;
-        fh_peer_selested = fh_peer_list[fh_peer];
+        fh_peer_selested = fh_peer_list + fh_peer;
 
         // Free up memory
         for (i=0; i<fh_peer_num; i++)
@@ -109,11 +112,12 @@ int main(int argc, char* argv[])
             }
         }
         
-        // ToDo - send the file to the peer
+        // Send the file to the peer
         printf("Sending the file to %s\n", fh_peer_list[fh_peer].info->name);
+        fhp_send(inptr, fh_peer_selested, filename);
         
         fclose(inptr);
-        free(fh_peer_selested.info);
+        free((*fh_peer_selested).info);
         free(fh_peer_list);
     }
     else

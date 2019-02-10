@@ -13,12 +13,13 @@
 #ifndef FILEHOOD_H
 #define FILEHOOD_H
 
-#define FHP_TIMEOUT 300
+#define FHP_TIMEOUT 60
 #define FHP_DISCOVERY_INT 3		// Discovery interval is 3 seconds
 #define FHP_MAX_NODES 20
 #define FHP_INFO_FILE_LEN 511 	// Max size of an info file
 
 #include <stdint.h>
+#include <stdio.h>
 #include "net.h"
 
 typedef struct
@@ -59,5 +60,13 @@ fhp_td_peer;
  *    return: amount of discovered nodes
  */
 int fhp_discovery(int timeout, int peer_limit, fhp_td_peer* peers);
+
+/**
+ * Send a file to a peer
+ *    input: inptr - a file descriptor for sending
+ *           peer - peer for receiving the file
+ *    return: 
+ */
+void fhp_send(FILE* inptr, fhp_td_peer* peer, char* filename);
 
 #endif // FILEHOOD_H

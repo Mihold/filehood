@@ -32,6 +32,8 @@
 
 #define TFTP_MODE "octet"
 
+int fhp_last_pr = 0;
+
 struct tftp_err
 {
     uint16_t tftp_opcode;
@@ -156,6 +158,33 @@ int fhp_discovery(int timeout, int peer_limit, fhp_td_peer* peers)
     return peer_num;
 }
 
+void fhp_progress(long sent, long size)
+{
+    int pr, i;
+
+    if (!sent)
+    {
+        fhp_last_pr = 0;
+        printf("00%% [__________________________________________________]");
+        fflush(stdout);
+    }
+    else
+    {
+        pr = (int) ((sent >> 9) * 100 / (size >> 9));
+        if (fhp_last_pr != pr)
+        {
+            printf("\r%02i%% [", pr);
+            fhp_last_pr = pr;
+            pr = pr >> 1;
+            for (i = 0; i < pr; i++)
+                printf("#");
+            for (i = pr; i < 50; i++)
+                printf("_");
+            printf("]");
+            fflush(stdout);
+        }
+    }
+}
 
 // Send a file to a peer
 void fhp_send(FILE* inptr, fhp_td_peer* peer, char* filename)
@@ -166,17 +195,6 @@ void fhp_send(FILE* inptr, fhp_td_peer* peer, char* filename)
     long sz, fhp_sent;
     net_tp_peer_addr fhp_peer_ip, fhp_tftp_asc_ip;
     time_t timer;
-    /*fhp_td_peer_info *peer_info;
-    net_tp_peer_addr peer_ip;
-    
-    // Prepear a request for gethering peers info
-    struct
-    {
-        uint16_t opcode;
-        char file_name[sizeof FHP_INFOFILE];
-        char mode[6];
-    } tftp_wrq = {TFTP_OPCODE_WRQ, FHP_INFOFILE, TFTP_MODE};
-*/
     struct tftp_ack* fhp_tftp_ack;
 
 
@@ -240,9 +258,10 @@ void fhp_send(FILE* inptr, fhp_td_peer* peer, char* filename)
     {
         // Send the file to the peer
         fhp_sent = 0;
+        fhp_progress(fhp_sent, sz);
         *((uint16_t*) tftp_buffer) = net_encode(TFTP_OPCODE_DAT);
         i = 1;
-        while (((block_size = fread((void*) (tftp_buffer + 4), 1, 512, inptr)) == 512) && (fhp_tftp_ack_block != i))
+        while ((block_size = fread((void*) (tftp_buffer + 4), 1, 512, inptr)) == 512)
         {
             *((uint16_t*) (tftp_buffer + 2)) = net_encode((uint16_t) i);
             j = 4;      // 4 attempt to send the block
@@ -270,21 +289,26 @@ void fhp_send(FILE* inptr, fhp_td_peer* peer, char* filename)
                             (net_decode(fhp_tftp_ack->tftp_blockNum) == i))
                         {
                             fhp_tftp_ack_block = i;
+                            fhp_sent += block_size;
+                            fhp_progress(fhp_sent, sz);
                         }
                     }
                 }
-                if (fhp_tftp_ack_block != i)
+                if ((fhp_tftp_ack_block != i) && (j != 1))      // Do not show the message after the last attempt
                     fprintf(stderr, "INF {filehood} TFTP: Resend DAT%i.\n", i);
                 j--;
             }
             if (fhp_tftp_ack_block != i)
+            {
                 fprintf(stderr, "ERR {filehood} TFTP timeout.\n");
+                break;
+            }
             else
                 i++;
         }
 
         // Send the last block
-        if (fhp_tftp_ack_block != i)
+        if (fhp_tftp_ack_block < i)
         {
             *((uint16_t*) (tftp_buffer + 2)) = net_encode((uint16_t) i);
             j = 4;      // 4 attempt to send the block
@@ -312,12 +336,13 @@ void fhp_send(FILE* inptr, fhp_td_peer* peer, char* filename)
                             (net_decode(fhp_tftp_ack->tftp_blockNum) == i))
                         {
                             fhp_tftp_ack_block = i;
+                            fhp_sent += block_size;
+                            fhp_progress(fhp_sent, sz);
                         }
                     }
                 }
-                if (fhp_tftp_ack_block != i)
+                if ((fhp_tftp_ack_block != i) && (j != 1))      // Do not show the message after the last attempt
                     fprintf(stderr, "INF {filehood} TFTP: Resend DAT%i.\n", i);
-                j--;
                 j--;
             }
             if (fhp_tftp_ack_block != i)

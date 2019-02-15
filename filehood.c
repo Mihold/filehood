@@ -189,8 +189,9 @@ void fhp_progress(long sent, long size)
 // Send a file to a peer
 void fhp_send(FILE* inptr, fhp_td_peer* peer, char* filename)
 {
-    int tftp_tid, i, j, err, block_size, tftp_wrq_size;
+    int tftp_tid, j, err, block_size, tftp_wrq_size;
     int filename_len, fhp_tftp_ack_block;
+    uint16_t i;
     char* tftp_buffer;
     long sz, fhp_sent;
     net_tp_peer_addr fhp_peer_ip, fhp_tftp_asc_ip;
@@ -276,7 +277,8 @@ void fhp_send(FILE* inptr, fhp_td_peer* peer, char* filename)
                 if (timer == -1)
                 {
                     fprintf(stderr, "ERR {filehood} Cannot initialize the timer.\n");
-                    return;
+                    err = 1;
+                    break;
                 }
                 timer += (time_t) 3;        // Timeout
                 
@@ -311,7 +313,7 @@ void fhp_send(FILE* inptr, fhp_td_peer* peer, char* filename)
         }
 
         // Send the last block
-        if ((fhp_tftp_ack_block < i) && !err)
+        if ((fhp_tftp_ack_block != i) && !err)
         {
             *((uint16_t*) (tftp_buffer + 2)) = net_encode((uint16_t) i);
             j = 4;      // 4 attempt to send the block
@@ -323,7 +325,7 @@ void fhp_send(FILE* inptr, fhp_td_peer* peer, char* filename)
                 if (timer == -1)
                 {
                     fprintf(stderr, "ERR {filehood} Cannot initialize the timer.\n");
-                    return;
+                    break;
                 }
                 timer += (time_t) 3;        // Timeout
                 

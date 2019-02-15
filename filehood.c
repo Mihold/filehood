@@ -189,7 +189,7 @@ void fhp_progress(long sent, long size)
 // Send a file to a peer
 void fhp_send(FILE* inptr, fhp_td_peer* peer, char* filename)
 {
-    int tftp_tid, i, j, block_size, tftp_wrq_size;
+    int tftp_tid, i, j, err, block_size, tftp_wrq_size;
     int filename_len, fhp_tftp_ack_block;
     char* tftp_buffer;
     long sz, fhp_sent;
@@ -207,6 +207,8 @@ void fhp_send(FILE* inptr, fhp_td_peer* peer, char* filename)
         return;
     }
     rewind(inptr);
+
+    err = 0;
     
     // Initialize TFTP client on random UDP port
     tftp_tid = net_server_init(0);
@@ -236,10 +238,11 @@ void fhp_send(FILE* inptr, fhp_td_peer* peer, char* filename)
     if (timer == -1)
     {
         fprintf(stderr, "ERR {filehood} Cannot initialize the timer.\n");
-        return;
+        err = 1;
     }
-    timer += (time_t) FHP_TIMEOUT;
-    while ((time(NULL) < timer) && (fhp_peer_ip.peer_port == FHP_SERVER_PORT))
+    else
+        timer += (time_t) FHP_TIMEOUT;
+    while ((time(NULL) < timer) && (fhp_peer_ip.peer_port == FHP_SERVER_PORT) && !err)
     {
         if (net_server_get_packet(tftp_tid, fhp_tftp_ack, 516, &fhp_tftp_asc_ip) == 4)
         {
@@ -254,14 +257,14 @@ void fhp_send(FILE* inptr, fhp_td_peer* peer, char* filename)
     }
 
     fhp_tftp_ack_block = 0;
-    if (fhp_peer_ip.peer_port != FHP_SERVER_PORT)
+    if ((fhp_peer_ip.peer_port != FHP_SERVER_PORT) && !err)
     {
         // Send the file to the peer
         fhp_sent = 0;
         fhp_progress(fhp_sent, sz);
         *((uint16_t*) tftp_buffer) = net_encode(TFTP_OPCODE_DAT);
         i = 1;
-        while ((block_size = fread((void*) (tftp_buffer + 4), 1, 512, inptr)) == 512)
+        while (((block_size = fread((void*) (tftp_buffer + 4), 1, 512, inptr)) == 512) && !err)
         {
             *((uint16_t*) (tftp_buffer + 2)) = net_encode((uint16_t) i);
             j = 4;      // 4 attempt to send the block
@@ -301,14 +304,14 @@ void fhp_send(FILE* inptr, fhp_td_peer* peer, char* filename)
             if (fhp_tftp_ack_block != i)
             {
                 fprintf(stderr, "ERR {filehood} TFTP timeout.\n");
-                break;
+                err = 1;
             }
             else
                 i++;
         }
 
         // Send the last block
-        if (fhp_tftp_ack_block < i)
+        if ((fhp_tftp_ack_block < i) && !err)
         {
             *((uint16_t*) (tftp_buffer + 2)) = net_encode((uint16_t) i);
             j = 4;      // 4 attempt to send the block

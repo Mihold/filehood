@@ -14,6 +14,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <libgen.h>
+#include <string.h>
+#include <errno.h>
+#include <unistd.h>
+#include <sys/stat.h>
 
 #include "filehood.h"
 
@@ -119,6 +123,51 @@ int main(int argc, char* argv[])
         fclose(inptr);
         free((*fh_peer_selested).info);
         free(fh_peer_list);
+    }
+    else if (argv[1][0] == 'r' && argv[1][1] == '\0')
+    {
+        // Receive a file
+
+        char *dst_dir;
+        struct stat sb;
+        uint32_t peer_id;
+        
+        // Check the node name
+        if (strlen(argv[2]) > 63)
+        {
+            printf("The node name is too long.\n");
+            return 1;
+        }
+        
+        // Check the directory to save the file
+        if (argc == 3)
+        {
+            dst_dir = "./";
+        }
+        else
+        {
+            dst_dir = argv[3];
+        }
+        if (stat(dst_dir, &sb) == 0 && S_ISDIR(sb.st_mode))
+        {
+            // Directory exists.
+            if (access(dst_dir, W_OK))
+            {
+                printf("You do not have access to the directory.\n");
+                return 1;
+            }
+            printf("A file will be saved in %s\n", dst_dir);
+
+            // Generate peer ID
+            peer_id = fhp_id_get();
+            printf("Your peer ID is %s\n", fhp_id_decode(peer_id));
+            printf("Waiting for a file.\n");
+        }
+        else
+        {
+            printf("The directory does not exist.\n");
+            return 1;
+        }
     }
     else
     {

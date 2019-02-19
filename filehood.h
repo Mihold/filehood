@@ -62,11 +62,25 @@ fhp_td_peer;
 int fhp_discovery(int timeout, int peer_limit, fhp_td_peer* peers);
 
 /**
- * Send a file to a peer
+ * Send the file to the peer
  *    input: inptr - a file descriptor for sending
  *           peer - peer for receiving the file
  *    return: 
  */
 void fhp_send(FILE* inptr, fhp_td_peer* peer, char* filename);
+
+/**
+ * Peer ID generator
+ *    input: 
+ *    return: 30 bit ID 
+ */
+uint32_t fhp_id_get(void);
+
+/**
+ * Decode the peer ID
+ *    input: 
+ *    return: 30 bit UUID 
+ */
+char *fhp_id_decode(uint32_t id);
 
 #endif // FILEHOOD_H

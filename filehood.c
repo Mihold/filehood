@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sys/time.h>
 
 #include "filehood.h"
 #include "net.h"
@@ -33,6 +34,9 @@
 #define TFTP_MODE "octet"
 
 int fhp_last_pr = 0;
+uint32_t fhp_peer_id = 0;
+char id_str[]="xx-xxxx";
+
 
 struct tftp_err
 {
@@ -167,6 +171,10 @@ void fhp_progress(long sent, long size)
         fhp_last_pr = 0;
         printf("00%% [__________________________________________________]");
         fflush(stdout);
+    }
+    else if (sent == size)
+    {
+        printf("\r100%% [##################################################]\n");
     }
     else
     {
@@ -358,4 +366,43 @@ void fhp_send(FILE* inptr, fhp_td_peer* peer, char* filename)
     free(tftp_buffer);
     free(fhp_tftp_ack);
     net_close(tftp_tid);
+}
+
+
+// Peer ID generator
+uint32_t fhp_id_get(void)
+{
+    struct timeval cur_time;
+    
+    if (!fhp_peer_id)
+    {
+        // Generate a new ID
+        
+        if (gettimeofday(&cur_time, NULL) == -1)
+        {
+            fprintf(stderr, "ERR {filehood} Cannot get time.\n");
+            exit(2);
+        }
+        fhp_peer_id = (cur_time.tv_sec << 20) & 0x3ff00000;
+        fhp_peer_id += cur_time.tv_usec & 0x000fffff ;
+        printf("%li -> %li\n", cur_time.tv_sec, cur_time.tv_sec & 0x04ff);
+    }
+    return fhp_peer_id;
+}
+
+// Decode peer ID
+char *fhp_id_decode(uint32_t id)
+{
+    uint32_t tmp;
+    char decode[]="0123456789ACDEFGHJKLMNPQRTUVWXYZ";
+
+    tmp=id;
+    for (int i=6; i >= 0; i--)
+    {
+        id_str[i] = decode[tmp & 0x0000001f];
+        tmp = tmp >> 5;
+        if (i == 3)
+            i--;
+    }
+    return &(id_str[0]);
 }

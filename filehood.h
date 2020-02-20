@@ -83,4 +83,19 @@ uint32_t fhp_id_get(void);
  */
 char *fhp_id_decode(uint32_t id);
 
+/**
+ * Generate filehood info file
+ *    input:  node name
+ *    return: pointer to info file structure
+ */
+void *fhp_infofile(char* n_name, uint32_t peer_id);
+
+/**
+ * Receive a file from a peer
+ *    input: inptr - a file descriptor for sending
+ *           peer - peer for receiving the file
+ *    return: 
+ */
+//void fhp_accept(FILE* inptr, fhp_td_peer* peer, void* fhp_info_file);
+
 #endif // FILEHOOD_H

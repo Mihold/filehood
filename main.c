@@ -131,6 +131,7 @@ int main(int argc, char* argv[])
         char *dst_dir;
         struct stat sb;
         uint32_t peer_id;
+        void *infofile;
         
         // Check the node name
         if (strlen(argv[2]) > 63)
@@ -156,12 +157,26 @@ int main(int argc, char* argv[])
                 printf("You do not have access to the directory.\n");
                 return 1;
             }
-            printf("A file will be saved in %s\n", dst_dir);
+            printf("The file will be saved in %s\n", dst_dir);
 
-            // Generate peer ID
+            // Generate a peer ID
             peer_id = fhp_id_get();
             printf("Your peer ID is %s\n", fhp_id_decode(peer_id));
-            printf("Waiting for a file.\n");
+
+            // fill out filehood.ini
+            infofile = fhp_infofile(argv[2] ,peer_id);
+
+            // Strat server
+            printf("Waiting for a file...\n");
+            /* 1. start the server
+               2. accept a file
+               3. close the server
+               4. receive the file
+            */
+            //fhp_accept( , , infofile);
+
+            // Free up memory
+            free(infofile);     // filehood.ini
         }
         else
         {

@@ -54,6 +54,7 @@ struct tftp_ack
 const char fhp_file_name[sizeof(FHP_INFOFILE)] = FHP_INFOFILE;
 const char fhp_magic[4] = {'F', 'H', 'P', 'r'};
 const char fhp_tftp_mode[sizeof(TFTP_MODE)] = TFTP_MODE;
+const char fhp_code[]="0123456789ACDEFGHJKLMNPQRTUVWXYZ";
 
 
 // Discovery neighbors
@@ -385,7 +386,6 @@ uint32_t fhp_id_get(void)
         }
         fhp_peer_id = (cur_time.tv_sec << 20) & 0x3ff00000;
         fhp_peer_id += cur_time.tv_usec & 0x000fffff ;
-        printf("%li -> %li\n", cur_time.tv_sec, cur_time.tv_sec & 0x04ff);
     }
     return fhp_peer_id;
 }
@@ -394,15 +394,31 @@ uint32_t fhp_id_get(void)
 char *fhp_id_decode(uint32_t id)
 {
     uint32_t tmp;
-    char decode[]="0123456789ACDEFGHJKLMNPQRTUVWXYZ";
 
-    tmp=id;
+    tmp = id;
     for (int i=6; i >= 0; i--)
     {
-        id_str[i] = decode[tmp & 0x0000001f];
+        id_str[i] = fhp_code[tmp & 0x0000001f];
         tmp = tmp >> 5;
         if (i == 3)
             i--;
     }
     return &(id_str[0]);
+}
+
+// Generate filehood info file
+void *fhp_infofile(char* n_name, uint32_t peer_id)
+{
+    fhp_td_peer_info* info_file = calloc(sizeof(fhp_td_peer_info), 1);
+    if (info_file)
+    {
+        *((uint32_t*) &(info_file->magic)) = *((uint32_t*) &fhp_magic);
+        strncpy(info_file->name, n_name, sizeof(info_file->name) - 1);
+        *((uint32_t*) &(info_file->uuid[0])) = peer_id;
+        info_file->version.main  = FHP_VERSION;
+        info_file->version.fix   = FHP_VERSION_FIX;
+        info_file->version.build = FHP_VERSION_BUILD;
+    }
+    
+    return (void*) info_file;
 }
